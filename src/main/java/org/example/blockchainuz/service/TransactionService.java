@@ -40,4 +40,12 @@ public class TransactionService {
                 .toList();
         return PagedResponseDTO.of(dtos, page.getNumber(), page.getSize(), page.getTotalElements(), page.getTotalPages());
     }
+
+    public PagedResponseDTO<TransactionDTO> getTransactionsByBlock(Long blockNumber, Pageable pageable) {
+        var page = transactionRepository.findByBlockNumber(blockNumber, pageable);
+        var dtos = page.getContent().stream()
+                .map(TransactionMapper::toDTO)
+                .toList();
+        return PagedResponseDTO.of(dtos, page.getNumber(), page.getSize(), page.getTotalElements(), page.getTotalPages());
+    }
 }

@@ -42,4 +42,19 @@ public class BlockService {
                 .orElseThrow(() -> new ResourceNotFoundException("No blocks found"));
         return BlockMapper.toDTO(block);
     }
+
+    public BlockDTO getPreviousBlock(Long blockNumber) {
+        if (blockNumber <= 0) {
+            throw new ResourceNotFoundException("No previous block for block 0");
+        }
+        var block = blockRepository.findByNumber(blockNumber - 1)
+                .orElseThrow(() -> new ResourceNotFoundException("Previous block not found: " + (blockNumber - 1)));
+        return BlockMapper.toDTO(block);
+    }
+
+    public BlockDTO getNextBlock(Long blockNumber) {
+        var block = blockRepository.findByNumber(blockNumber + 1)
+                .orElseThrow(() -> new ResourceNotFoundException("Next block not found: " + (blockNumber + 1)));
+        return BlockMapper.toDTO(block);
+    }
 }

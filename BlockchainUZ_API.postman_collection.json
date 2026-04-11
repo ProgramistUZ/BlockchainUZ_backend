@@ -1,0 +1,362 @@
+{
+	"info": {
+		"_postman_id": "blockchain-uz-api",
+		"name": "BlockchainUZ API",
+		"description": "API endpoints for BlockchainUZ backend - Ethereum blockchain explorer",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "Blocks",
+			"item": [
+				{
+					"name": "Get Blocks (Paginated)",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/blocks?page=0&size=20&sort=number,desc",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "blocks"],
+							"query": [
+								{
+									"key": "page",
+									"value": "0",
+									"description": "Page number (0-based)"
+								},
+								{
+									"key": "size",
+									"value": "20",
+									"description": "Page size"
+								},
+								{
+									"key": "sort",
+									"value": "number,desc",
+									"description": "Sort field and direction"
+								}
+							]
+						},
+						"description": "Returns a paginated list of blocks"
+					},
+					"response": []
+				},
+				{
+					"name": "Get Latest Block",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/blocks/latest",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "blocks", "latest"]
+						},
+						"description": "Returns the most recent block"
+					},
+					"response": []
+				},
+				{
+					"name": "Get Block by Hash",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/blocks/hash/{{blockHash}}",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "blocks", "hash", "{{blockHash}}"]
+						},
+						"description": "Returns a single block with its transactions by hash"
+					},
+					"response": []
+				},
+				{
+					"name": "Get Block by Number",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/blocks/number/{{blockNumber}}",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "blocks", "number", "{{blockNumber}}"]
+						},
+						"description": "Returns a single block with its transactions by block number"
+					},
+					"response": []
+				},
+				{
+					"name": "Get Previous Block",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/blocks/number/{{blockNumber}}/previous",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "blocks", "number", "{{blockNumber}}", "previous"]
+						},
+						"description": "Returns the block before the specified block number"
+					},
+					"response": []
+				},
+				{
+					"name": "Get Next Block",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/blocks/number/{{blockNumber}}/next",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "blocks", "number", "{{blockNumber}}", "next"]
+						},
+						"description": "Returns the block after the specified block number"
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Transactions",
+			"item": [
+				{
+					"name": "Get Transactions (Paginated)",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/transactions?page=0&size=20&sort=blockNumber,desc",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "transactions"],
+							"query": [
+								{
+									"key": "page",
+									"value": "0"
+								},
+								{
+									"key": "size",
+									"value": "20"
+								},
+								{
+									"key": "sort",
+									"value": "blockNumber,desc"
+								}
+							]
+						},
+						"description": "Returns a paginated list of transactions"
+					},
+					"response": []
+				},
+				{
+					"name": "Get Transaction by Hash",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/transactions/{{txHash}}",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "transactions", "{{txHash}}"]
+						},
+						"description": "Returns a single transaction by hash"
+					},
+					"response": []
+				},
+				{
+					"name": "Search Transactions",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/transactions/search?address={{walletAddress}}&page=0&size=20",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "transactions", "search"],
+							"query": [
+								{
+									"key": "hash",
+									"value": "",
+									"description": "Transaction hash",
+									"disabled": true
+								},
+								{
+									"key": "blockNumber",
+									"value": "",
+									"description": "Block number",
+									"disabled": true
+								},
+								{
+									"key": "status",
+									"value": "CONFIRMED",
+									"description": "Transaction status",
+									"disabled": true
+								},
+								{
+									"key": "address",
+									"value": "{{walletAddress}}",
+									"description": "Wallet address (from or to)"
+								},
+								{
+									"key": "page",
+									"value": "0"
+								},
+								{
+									"key": "size",
+									"value": "20"
+								}
+							]
+						},
+						"description": "Search transactions with filters"
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Wallets",
+			"item": [
+				{
+					"name": "Get Wallet by Address",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/wallets/{{walletAddress}}",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "wallets", "{{walletAddress}}"]
+						},
+						"description": "Returns wallet info including transaction count"
+					},
+					"response": []
+				},
+				{
+					"name": "Get Wallet Balance",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/wallets/{{walletAddress}}/balance",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "wallets", "{{walletAddress}}", "balance"]
+						},
+						"description": "Returns the current balance of the wallet in ETH"
+					},
+					"response": []
+				},
+				{
+					"name": "Get Wallet Transaction History",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/wallets/{{walletAddress}}/transactions?page=0&size=20&sort=blockNumber,desc",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "wallets", "{{walletAddress}}", "transactions"],
+							"query": [
+								{
+									"key": "page",
+									"value": "0"
+								},
+								{
+									"key": "size",
+									"value": "20"
+								},
+								{
+									"key": "sort",
+									"value": "blockNumber,desc"
+								}
+							]
+						},
+						"description": "Returns paginated transaction history for the wallet"
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Sync",
+			"item": [
+				{
+					"name": "Get Sync Status",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/sync/status",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "sync", "status"]
+						},
+						"description": "Returns the current synchronization status"
+					},
+					"response": []
+				},
+				{
+					"name": "Trigger Manual Sync",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/sync/trigger",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "sync", "trigger"]
+						},
+						"description": "Manually trigger blockchain synchronization (requires ADMIN role)"
+					},
+					"response": []
+				},
+				{
+					"name": "Sync Block Range",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/sync/range?startBlock=1&endBlock=10",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "sync", "range"],
+							"query": [
+								{
+									"key": "startBlock",
+									"value": "1",
+									"description": "Start block number"
+								},
+								{
+									"key": "endBlock",
+									"value": "10",
+									"description": "End block number"
+								}
+							]
+						},
+						"description": "Manually sync a specific range of blocks (requires ADMIN role)"
+					},
+					"response": []
+				}
+			]
+		}
+	],
+	"variable": [
+		{
+			"key": "baseUrl",
+			"value": "http://localhost:8080",
+			"type": "string",
+			"description": "API base URL (use environments to switch between dev/prod)"
+		},
+		{
+			"key": "blockHash",
+			"value": "0x...",
+			"type": "string",
+			"description": "Example block hash from your blockchain"
+		},
+		{
+			"key": "txHash",
+			"value": "0x...",
+			"type": "string",
+			"description": "Example transaction hash from your blockchain"
+		},
+		{
+			"key": "walletAddress",
+			"value": "0x0000006916a87b82333f4245046623b23794C65C",
+			"type": "string",
+			"description": "Test wallet address with transactions"
+		},
+		{
+			"key": "blockNumber",
+			"value": "10",
+			"type": "string",
+			"description": "Block number for testing"
+		}
+	]
+}

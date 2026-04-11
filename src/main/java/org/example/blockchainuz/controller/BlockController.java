@@ -42,4 +42,16 @@ public class BlockController {
     public ResponseEntity<BlockDTO> getBlockByNumber(@PathVariable Long number) {
         return ResponseEntity.ok(blockService.getBlockByNumber(number));
     }
+
+    @GetMapping("/number/{number}/previous")
+    @Operation(summary = "Get previous block", description = "Returns the block before the specified block number")
+    public ResponseEntity<BlockDTO> getPreviousBlock(@PathVariable Long number) {
+        return ResponseEntity.ok(blockService.getPreviousBlock(number));
+    }
+
+    @GetMapping("/number/{number}/next")
+    @Operation(summary = "Get next block", description = "Returns the block after the specified block number")
+    public ResponseEntity<BlockDTO> getNextBlock(@PathVariable Long number) {
+        return ResponseEntity.ok(blockService.getNextBlock(number));
+    }
 }
