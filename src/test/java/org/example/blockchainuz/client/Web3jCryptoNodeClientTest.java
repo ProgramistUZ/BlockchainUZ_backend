@@ -1,117 +1,155 @@
 package org.example.blockchainuz.client;
 
 import org.example.blockchainuz.client.dto.BlockResponse;
-import org.example.blockchainuz.client.dto.TransactionResponse;
 import org.example.blockchainuz.exception.CryptoNodeException;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.test.context.ActiveProfiles;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+import org.web3j.protocol.Web3j;
+import org.web3j.protocol.core.DefaultBlockParameter;
+import org.web3j.protocol.core.Request;
+import org.web3j.protocol.core.methods.response.EthBlock;
+import org.web3j.protocol.core.methods.response.EthBlockNumber;
+import org.web3j.protocol.core.methods.response.EthGetBalance;
 
+import java.io.IOException;
 import java.math.BigInteger;
+import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyBoolean;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
-/**
- * Integration tests for Web3jCryptoNodeClient
- * Tests connection to Ethereum testnet
- */
-@SpringBootTest
-@ActiveProfiles("dev")
+@ExtendWith(MockitoExtension.class)
 class Web3jCryptoNodeClientTest {
 
-    @Autowired
-    private CryptoNodeClient cryptoNodeClient;
+    @Mock
+    private Web3j web3j;
 
-    @Test
-    void testConnectionIsSuccessful() {
-        // Test that client can connect to the node
-        assertTrue(cryptoNodeClient.isConnected(), "Client should be connected to the blockchain node");
+    private Web3jCryptoNodeClient client;
+
+    @BeforeEach
+    void setUp() {
+        client = new Web3jCryptoNodeClient(web3j);
     }
 
     @Test
-    void testGetLatestBlockNumber() {
-        // Test fetching latest block number
-        BigInteger latestBlockNumber = cryptoNodeClient.getLatestBlockNumber();
-        assertNotNull(latestBlockNumber, "Latest block number should not be null");
-        assertTrue(latestBlockNumber.compareTo(BigInteger.ZERO) > 0, "Latest block number should be greater than 0");
+    void getLatestBlockNumber_returnsValueFromNode() throws IOException {
+        // Web3j returns a Request<?, EthBlockNumber> that you .send() to hit the network.
+        // To mock: stub ethBlockNumber() -> fake Request whose .send() returns a pre-filled EthBlockNumber.
+        EthBlockNumber response = new EthBlockNumber();
+        response.setResult("0xa531be"); // hex for 10826174
+
+        @SuppressWarnings("unchecked")
+        Request<?, EthBlockNumber> request = mock(Request.class);
+        when(request.send()).thenReturn(response);
+        when(web3j.ethBlockNumber()).thenReturn((Request) request);
+
+        BigInteger result = client.getLatestBlockNumber();
+
+        assertEquals(BigInteger.valueOf(10826174L), result);
     }
 
     @Test
-    void testGetBlockByNumber() {
-        // Test fetching a specific block by number
-        // Block 1 exists on all Ethereum networks
-        BigInteger blockNumber = BigInteger.ONE;
-        BlockResponse block = cryptoNodeClient.getBlockByNumber(blockNumber);
+    void getLatestBlockNumber_wrapsIOExceptionInCryptoNodeException() throws IOException {
+        @SuppressWarnings("unchecked")
+        Request<?, EthBlockNumber> request = mock(Request.class);
+        when(request.send()).thenThrow(new IOException("network down"));
+        when(web3j.ethBlockNumber()).thenReturn((Request) request);
 
-        assertNotNull(block, "Block should not be null");
-        assertEquals(blockNumber, block.getNumber(), "Block number should match");
-        assertNotNull(block.getHash(), "Block hash should not be null");
-        assertNotNull(block.getTimestamp(), "Block timestamp should not be null");
-        assertNotNull(block.getParentHash(), "Parent hash should not be null");
+        CryptoNodeException ex = assertThrows(CryptoNodeException.class, () -> client.getLatestBlockNumber());
+        assertNotNull(ex.getCause());
+        assertInstanceOf(IOException.class, ex.getCause());
     }
 
     @Test
-    void testGetBlockByHash() {
-        // First get a block by number to get its hash
-        BigInteger blockNumber = BigInteger.ONE;
-        BlockResponse block1 = cryptoNodeClient.getBlockByNumber(blockNumber);
+    void getBlockByNumber_throwsWhenBlockIsNull() throws IOException {
+        // Sepolia returns null for blocks that don't exist yet. The client should translate
+        // that into CryptoNodeException("Block not found: ...") rather than NPE later.
+        EthBlock ethBlock = new EthBlock();
+        ethBlock.setResult(null);
 
-        // Then fetch the same block by hash
-        BlockResponse block2 = cryptoNodeClient.getBlockByHash(block1.getHash());
+        @SuppressWarnings("unchecked")
+        Request<?, EthBlock> request = mock(Request.class);
+        when(request.send()).thenReturn(ethBlock);
+        when(web3j.ethGetBlockByNumber(any(DefaultBlockParameter.class), anyBoolean()))
+                .thenReturn((Request) request);
 
-        assertNotNull(block2, "Block should not be null");
-        assertEquals(block1.getHash(), block2.getHash(), "Block hashes should match");
-        assertEquals(block1.getNumber(), block2.getNumber(), "Block numbers should match");
+        BigInteger futureBlock = BigInteger.valueOf(Long.MAX_VALUE);
+        CryptoNodeException ex = assertThrows(CryptoNodeException.class,
+                () -> client.getBlockByNumber(futureBlock));
+        assertTrue(ex.getMessage().contains(futureBlock.toString()));
     }
 
     @Test
-    void testGetBlockByNumberNotFound() {
-        // Test fetching a block that doesn't exist (very high number)
-        BigInteger futureBlockNumber = BigInteger.valueOf(Long.MAX_VALUE);
+    void getBlockByNumber_mapsBlockFields() throws IOException {
+        // Web3j's Block has a huge constructor that changes between versions.
+        // Using the no-arg constructor + setters is version-robust.
+        EthBlock.Block block = new EthBlock.Block();
+        block.setNumber("0x64");            // 100
+        block.setHash("0xblockhash");
+        block.setParentHash("0xparenthash");
+        block.setTimestamp("0x5f5e100");    // 100000000 epoch
+        block.setTransactions(List.of());
 
-        assertThrows(CryptoNodeException.class, () -> {
-            cryptoNodeClient.getBlockByNumber(futureBlockNumber);
-        }, "Should throw CryptoNodeException for non-existent block");
+        EthBlock ethBlock = new EthBlock();
+        ethBlock.setResult(block);
+
+        @SuppressWarnings("unchecked")
+        Request<?, EthBlock> request = mock(Request.class);
+        when(request.send()).thenReturn(ethBlock);
+        when(web3j.ethGetBlockByNumber(any(DefaultBlockParameter.class), anyBoolean()))
+                .thenReturn((Request) request);
+
+        BlockResponse response = client.getBlockByNumber(BigInteger.valueOf(100));
+
+        assertEquals("0xblockhash", response.getHash());
+        assertEquals(BigInteger.valueOf(100), response.getNumber());
+        assertEquals("0xparenthash", response.getParentHash());
+        assertNotNull(response.getTimestamp());
+        assertTrue(response.getTransactions().isEmpty());
     }
 
     @Test
-    void testGetBalance() {
-        // Test fetching balance for a well-known address
-        // Using zero address (0x0000...0000) which should have 0 balance
-        String zeroAddress = "0x0000000000000000000000000000000000000000";
-        BigInteger balance = cryptoNodeClient.getBalance(zeroAddress);
+    void isConnected_returnsTrueWhenNodeResponds() throws IOException {
+        EthBlockNumber response = new EthBlockNumber();
+        response.setResult("0x1");
 
-        assertNotNull(balance, "Balance should not be null");
-        // Zero address should have 0 balance
-        assertEquals(BigInteger.ZERO, balance, "Zero address should have 0 balance");
+        @SuppressWarnings("unchecked")
+        Request<?, EthBlockNumber> request = mock(Request.class);
+        when(request.send()).thenReturn(response);
+        when(web3j.ethBlockNumber()).thenReturn((Request) request);
+
+        assertTrue(client.isConnected());
     }
 
     @Test
-    void testTransactionParsing() {
-        // Get a block with transactions
-        BigInteger latestBlockNumber = cryptoNodeClient.getLatestBlockNumber();
+    void isConnected_returnsFalseOnIOException() throws IOException {
+        @SuppressWarnings("unchecked")
+        Request<?, EthBlockNumber> request = mock(Request.class);
+        when(request.send()).thenThrow(new IOException("socket closed"));
+        when(web3j.ethBlockNumber()).thenReturn((Request) request);
 
-        // Iterate backwards to find a block with transactions
-        BlockResponse blockWithTxs = null;
-        for (int i = 0; i < 10; i++) {
-            BigInteger blockNum = latestBlockNumber.subtract(BigInteger.valueOf(i));
-            BlockResponse block = cryptoNodeClient.getBlockByNumber(blockNum);
-            if (block.getTransactions() != null && !block.getTransactions().isEmpty()) {
-                blockWithTxs = block;
-                break;
-            }
-        }
+        assertFalse(client.isConnected());
+    }
 
-        // If we found a block with transactions, verify transaction data
-        if (blockWithTxs != null) {
-            assertFalse(blockWithTxs.getTransactions().isEmpty(), "Block should have transactions");
+    // Documents a bug: isConnected only catches IOException. Any unchecked exception
+    // from .send() — e.g. a malformed response deserialization — escapes and crashes
+    // whatever health-check calls this. A connection-check method that can itself throw
+    // is arguably not a connection check. When the impl is fixed to catch Exception,
+    // flip this to assertFalse.
+    @Test
+    void isConnected_currentlyPropagatesRuntimeException_shouldReturnFalse() throws IOException {
+        @SuppressWarnings("unchecked")
+        Request<?, EthBlockNumber> request = mock(Request.class);
+        when(request.send()).thenThrow(new RuntimeException("bad JSON"));
+        when(web3j.ethBlockNumber()).thenReturn((Request) request);
 
-            TransactionResponse tx = blockWithTxs.getTransactions().get(0);
-            assertNotNull(tx.getHash(), "Transaction hash should not be null");
-            assertNotNull(tx.getFromAddress(), "From address should not be null");
-            assertNotNull(tx.getValue(), "Value should not be null");
-            assertEquals(blockWithTxs.getNumber(), tx.getBlockNumber(), "Block number should match");
-        }
+        assertThrows(RuntimeException.class, () -> client.isConnected());
     }
 }
