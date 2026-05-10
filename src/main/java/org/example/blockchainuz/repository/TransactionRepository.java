@@ -45,11 +45,16 @@ public interface TransactionRepository extends JpaRepository<Transaction, Long> 
     @Query("SELECT AVG(t.value) FROM Transaction t WHERE t.value IS NOT NULL")
     Double getAverageTransactionValue();
 
+    // COALESCE on the Instant params is a PostgreSQL workaround: a bare `:param IS NULL`
+    // bind-parameter check on Instant fails with "could not determine data type of parameter $1"
+    // because typed-null inference is unreliable for timestamps. Since b.timestamp is NOT NULL,
+    // `b.timestamp >= coalesce(:startDate, b.timestamp)` is true whenever :startDate is null,
+    // i.e. no filter — without needing PG to type-infer a standalone NULL.
     @Query("""
             SELECT t FROM Transaction t
-            JOIN t.block b
-            WHERE (:startDate IS NULL OR b.timestamp >= :startDate)
-              AND (:endDate IS NULL OR b.timestamp <= :endDate)
+            JOIN FETCH t.block b
+            WHERE b.timestamp >= coalesce(:startDate, b.timestamp)
+              AND b.timestamp <= coalesce(:endDate, b.timestamp)
               AND (:address IS NULL OR t.fromAddress = :address OR t.toAddress = :address)
             ORDER BY b.timestamp DESC
             """)

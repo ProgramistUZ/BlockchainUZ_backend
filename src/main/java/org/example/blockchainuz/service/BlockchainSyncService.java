@@ -14,14 +14,10 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.web3j.utils.Convert;
 
-import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.util.ArrayList;
-import java.util.HashSet;
 import java.util.List;
-import java.util.Set;
 
 /**
  * Service for syncing blockchain data from the node to the database
@@ -126,7 +122,6 @@ public class BlockchainSyncService {
             // Save transactions
             if (blockResponse.getTransactions() != null && !blockResponse.getTransactions().isEmpty()) {
                 List<Transaction> transactions = new ArrayList<>();
-                Set<String> addressesInBlock = new HashSet<>();
 
                 for (TransactionResponse txResponse : blockResponse.getTransactions()) {
                     Transaction tx = new Transaction();
@@ -139,20 +134,13 @@ public class BlockchainSyncService {
                     tx.setBlock(block);
 
                     transactions.add(tx);
-
-                    // Collect addresses for balance updates
-                    if (txResponse.getFromAddress() != null) {
-                        addressesInBlock.add(txResponse.getFromAddress());
-                    }
-                    if (txResponse.getToAddress() != null) {
-                        addressesInBlock.add(txResponse.getToAddress());
-                    }
                 }
 
                 transactionRepository.saveAll(transactions);
 
-                // Update wallet balances for addresses in this block
-                updateWalletBalances(addressesInBlock);
+                // Wallet balances are fetched on-demand by WalletService.getBalance() —
+                // syncing them per block costs ~1 RPC per unique address and blows the
+                // public-node rate limit without providing useful freshness.
 
                 log.info("Saved block {} with {} transactions", blockNumber, transactions.size());
             } else {
@@ -162,22 +150,6 @@ public class BlockchainSyncService {
         } catch (Exception e) {
             log.error("Error syncing block {}", blockNumber, e);
             throw new RuntimeException("Failed to sync block " + blockNumber, e);
-        }
-    }
-
-    /**
-     * Update wallet balances for given addresses
-     */
-    private void updateWalletBalances(Set<String> addresses) {
-        for (String address : addresses) {
-            try {
-                BigInteger balanceWei = cryptoNodeClient.getBalance(address);
-                BigDecimal balanceEth = Convert.fromWei(new BigDecimal(balanceWei), Convert.Unit.ETHER);
-                walletService.createOrUpdateWallet(address, balanceEth);
-                log.debug("Updated balance for wallet {}: {} ETH", address, balanceEth);
-            } catch (Exception e) {
-                log.warn("Failed to update balance for wallet {}", address, e);
-            }
         }
     }
 

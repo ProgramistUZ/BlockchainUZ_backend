@@ -95,7 +95,6 @@ class BlockchainSyncServiceTest {
         when(cryptoNodeClient.getBlockByNumber(blockNumber)).thenReturn(blockResponse);
         when(blockRepository.save(any(Block.class))).thenAnswer(invocation -> invocation.getArgument(0));
         when(transactionRepository.saveAll(any())).thenReturn(List.of());
-        when(cryptoNodeClient.getBalance(anyString())).thenReturn(BigInteger.valueOf(1000000000000000000L));
 
         // When
         syncService.syncBlock(blockNumber);
@@ -104,7 +103,9 @@ class BlockchainSyncServiceTest {
         verify(cryptoNodeClient, times(1)).getBlockByNumber(blockNumber);
         verify(blockRepository, times(1)).save(any(Block.class));
         verify(transactionRepository, times(1)).saveAll(any());
-        verify(cryptoNodeClient, times(2)).getBalance(anyString()); // from and to addresses
+        // Balance fetching during sync was removed — wallets are populated lazily by
+        // WalletService.getBalance() on first read. See BlockchainSyncService.syncBlock.
+        verify(cryptoNodeClient, never()).getBalance(anyString());
     }
 
     @Test

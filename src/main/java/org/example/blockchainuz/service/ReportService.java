@@ -89,18 +89,19 @@ public class ReportService {
     }
 
     public StreamingResponseBody exportTransactionsCsv(Instant startDate, Instant endDate, String address) {
+        // Assemble inside the @Transactional method — the returned lambda runs on a different
+        // thread after the transaction closes, so lazy relations (tx.block) would fail there.
+        List<TransactionDTO> transactions = transactionRepository
+                .findForExport(startDate, endDate, address)
+                .stream()
+                .map(TransactionMapper::toDTO)
+                .toList();
+
         return outputStream -> {
             try (BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(outputStream))) {
                 writer.write("Hash,From Address,To Address,Value,Block Number,Status,Timestamp\n");
-
-                List<TransactionDTO> transactions = transactionRepository
-                        .findForExport(startDate, endDate, address)
-                        .stream()
-                        .map(TransactionMapper::toDTO)
-                        .toList();
-
                 for (TransactionDTO tx : transactions) {
-                    writer.write(String.format("%s,%s,%s,%s,%d,%s,%s\n",
+                    writer.write(String.format("%s,%s,%s,%s,%d,%s,%s%n",
                             escapeCsv(tx.hash()),
                             escapeCsv(tx.fromAddress()),
                             escapeCsv(tx.toAddress()),
@@ -114,13 +115,13 @@ public class ReportService {
     }
 
     public StreamingResponseBody exportTransactionsJson(Instant startDate, Instant endDate, String address) {
-        return outputStream -> {
-            List<TransactionDTO> transactions = transactionRepository
-                    .findForExport(startDate, endDate, address)
-                    .stream()
-                    .map(TransactionMapper::toDTO)
-                    .toList();
+        List<TransactionDTO> transactions = transactionRepository
+                .findForExport(startDate, endDate, address)
+                .stream()
+                .map(TransactionMapper::toDTO)
+                .toList();
 
+        return outputStream -> {
             ObjectMapper mapper = new ObjectMapper();
             mapper.findAndRegisterModules();
             mapper.writeValue(outputStream, transactions);
